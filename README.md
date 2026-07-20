@@ -1,55 +1,58 @@
-# detkit — dbt for detections
+# detkit
 
-[![CI](https://github.com/ELSATOAH/detkit/actions/workflows/ci.yml/badge.svg)](https://github.com/ELSATOAH/detkit/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/ELSATOAH/detkit/blob/main/LICENSE)
+[![CI](https://github.com/ELSATOAH/detkit/actions/workflows/ci.yml/badge.svg)](https://github.com/ELSATOAH/detkit/actions/workflows/ci.yml) [![PyPI](https://img.shields.io/pypi/v/detkit-cli)](https://pypi.org/project/detkit-cli/) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/ELSATOAH/detkit/blob/main/LICENSE)
 
-Test, validate, and CI-gate your Sigma detection rules **as code**, before they
-ever reach production.
+Unit tests for your Sigma detection rules. Write a rule, add a couple of example log events, and detkit tells you whether it fires on the ones that should trip it and stays quiet on the ones that shouldn't. Wire it into CI and a broken detection fails the pull request instead of failing silently in production.
+
+Think `dbt test`, but for detections.
 
 ![detkit catching a broken detection before it ships](https://raw.githubusercontent.com/ELSATOAH/detkit/main/detkit-demo.gif)
 
-Detection engineers write rules in [Sigma](https://sigmahq.io/), commit them to
-Git, and ship them to a SIEM — but there's no standard way to *unit-test* a rule
-locally: does it actually fire on the attack it targets, and stay quiet on benign
-traffic? Today that's checked by hand, or in prod. detkit closes that loop.
-
-```
-detkit test ./rules        # run every rule against its sample events
-detkit validate ./rules    # structural + condition-reference checks
-```
-
-detkit is **open source (MIT)**, **self-hostable**, and **vendor-neutral** — it
-sits *alongside* your SIEM (Wazuh, Elastic, Splunk, Sentinel), not in front of
-it. Your logs and rules never leave your machine or CI runner.
-
-## Quickstart
+## Install
 
 ```bash
-pipx install git+https://github.com/ELSATOAH/detkit.git   # PyPI: `pipx install detkit-cli` (coming soon)
-
-detkit init         # scaffold a starter rule + test + a CI workflow
-detkit test rules   # -> green on the first run
+pipx install detkit-cli    # installs the `detkit` command
+# or the latest from source:
+pipx install git+https://github.com/ELSATOAH/detkit.git
 ```
 
-Each rule gets a sibling `*.test.yml` describing sample events and whether the
-rule should match:
+Then:
+
+```bash
+detkit init          # drops a starter rule, its test, and a CI workflow
+detkit test rules    # green on the first run
+```
+
+## How it works
+
+Your rule is plain [Sigma](https://sigmahq.io/). Next to it you keep a `<rule>.test.yml` listing sample events and what you expect:
 
 ```yaml
 # whoami_execution.test.yml
 tests:
-  - name: fires on whoami run by a normal user
+  - name: fires on whoami
     event: { EventID: 4688, CommandLine: "cmd /c whoami /all", User: "alice" }
     expect: match
-  - name: suppressed for SYSTEM
+  - name: not for SYSTEM
     event: { EventID: 4688, CommandLine: "whoami", User: "SYSTEM" }
     expect: no_match
 ```
 
-`detkit test` exits non-zero on any failure, so you can drop it straight into CI
-and block a pull request that breaks a detection.
+`detkit test` runs every rule against its events and exits non-zero if any expectation is wrong. That's the whole idea:
 
-## Use it in CI (GitHub Actions)
+```console
+$ detkit test rules
+  . process_exec.yml :: fires on the encoded command
+  x process_exec.yml :: ignores the admin allowlist  (rule fired, expected no_match)
 
-Drop this into your **rules** repo to gate every pull request:
+  1 passed, 1 failed, 0 rule(s) without tests
+```
+
+`detkit validate` does a quicker structural check: the required fields are there, and the condition only references identifiers that actually exist.
+
+## In CI
+
+Drop this in your rules repo and any PR that breaks a detection gets blocked before it merges:
 
 ```yaml
 # .github/workflows/detections.yml
@@ -60,48 +63,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ELSATOAH/detkit@v0   # this repo's composite action
+      - uses: ELSATOAH/detkit@v0
         with:
-          path: rules                # where your Sigma rules live
+          path: rules
 ```
 
-A rule whose `*.test.yml` no longer passes now fails the check and blocks the
-merge — the same safety net dbt gives analytics engineers.
+## What it handles
 
-## Why this, why now
+detkit runs your rules locally. No SIEM, no credentials, nothing leaves your machine or CI runner. I ran it against every rule in the SigmaHQ repo, and about 91% use only features it understands today: `contains`, `startswith`, `endswith`, `re`, value wildcards (`*` and `?`), `|cidr`, keyword lists, and `X of` / `all of` conditions.
 
-- **Detection-as-code is mainstream** (SigmaHQ, Elastic detection-rules, Splunk
-  ESCU) but the *test* step is missing — the same gap dbt filled for analytics.
-- **Self-host is a hard requirement, not a preference:** security telemetry can't
-  be shipped to someone else's cloud. That's the wedge closed SaaS SOC tools
-  (Dropzone, Prophet, Intezer) structurally can't serve.
-- **The community distributes it:** good detection tooling spreads bottom-up on
-  GitHub. detkit is built to be forked, extended, and shared.
+It won't guess at the rest. If a rule uses something detkit can't evaluate yet, like nested fields (`DeviceDetail.deviceId`) or `base64` modifiers, `test` and `validate` print a WARN naming the feature instead of returning an answer that might be wrong. A detection tool that's quietly wrong is worse than no tool.
+
+## Why
+
+Detections live in Git now, but the testing habit that comes with the rest of software never followed them there. dbt sorted this out for data models years ago; Sigma rules deserve the same. And it runs locally on purpose, because security logs aren't something you can hand to someone else's cloud just to check a rule.
 
 ## Roadmap
 
-- `detkit generate` — AI-draft a rule **and its tests** from a natural-language
-  threat description (tests are mandatory, never optional).
-- More log schemas / field-mapping so one rule tests against multiple log sources.
-- Close the remaining gaps detkit currently warns on: nested/dotted field access
-  (~3% of rules) and `base64` modifiers — likely via
-  [pySigma](https://github.com/SigmaHQ/pySigma) for full-spec parsing.
-- Managed cloud (hosted runs, SSO, shared rule/test libraries) — the paid tier.
-  The tool stays free forever.
+- Nested/dotted fields and `base64` modifiers (the two things it warns on today), probably via [pySigma](https://github.com/SigmaHQ/pySigma).
+- `detkit generate`: draft a rule and its tests from a plain-English description. The tests come with it, not as an afterthought.
+- Field mapping, so one rule can be checked against more than one log schema.
+- A hosted option down the line for teams that want shared runs and history. The CLI stays free.
 
 ## Status
 
-Early, but the core is real. detkit evaluates a rule's `detection`/`condition`
-against log events and runs tests around it — covering the features used by the
-**large majority of published SigmaHQ rules**: `contains`/`startswith`/`endswith`/
-`re` modifiers, value wildcards (`*`/`?`), `|cidr`, list-as-OR, keyword lists, and
-`X of` / `all of` conditions.
+Early, but the core works and has tests (`python3 tests/test_evaluator.py`). Rough edges are marked with `# ponytail:` comments in the source. Issues and PRs welcome.
 
-What it can't yet evaluate (nested/dotted fields, `base64` modifiers) it **flags
-loudly** — `detkit validate` and `detkit test` print a `WARN` rather than return a
-confident wrong answer. A detection tool that's silently wrong is worse than none.
-
-Run the checks: `python tests/test_evaluator.py`. Limits are marked with
-`# ponytail:` comments in `detkit/evaluator.py`.
-
-MIT licensed. Contributions welcome.
+MIT.
