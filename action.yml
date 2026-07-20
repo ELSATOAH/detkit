@@ -1,0 +1,27 @@
+name: 'detkit — test detections'
+description: 'Run detkit against your Sigma detection rules to gate pull requests in CI.'
+branding:
+  icon: 'shield'
+  color: 'purple'
+inputs:
+  path:
+    description: 'Directory containing your Sigma rules and their *.test.yml files.'
+    required: false
+    default: '.'
+  command:
+    description: 'Which detkit command to run: test or validate.'
+    required: false
+    default: 'test'
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - name: Install detkit
+      shell: bash
+      run: pip install "${{ github.action_path }}"
+    - name: Run detkit
+      shell: bash
+      run: detkit "${{ inputs.command }}" "${{ inputs.path }}"

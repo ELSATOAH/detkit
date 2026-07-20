@@ -41,6 +41,27 @@ tests:
 `detkit test` exits non-zero on any failure, so you can drop it straight into CI
 and block a pull request that breaks a detection.
 
+## Use it in CI (GitHub Actions)
+
+Drop this into your **rules** repo to gate every pull request:
+
+```yaml
+# .github/workflows/detections.yml
+name: Detections
+on: [pull_request]
+jobs:
+  detkit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: YOUR-ORG/detkit@v0     # this repo's composite action
+        with:
+          path: rules                # where your Sigma rules live
+```
+
+A rule whose `*.test.yml` no longer passes now fails the check and blocks the
+merge — the same safety net dbt gives analytics engineers.
+
 ## Why this, why now
 
 - **Detection-as-code is mainstream** (SigmaHQ, Elastic detection-rules, Splunk
@@ -58,7 +79,6 @@ and block a pull request that breaks a detection.
 - More log schemas / field-mapping so one rule tests against multiple log sources.
 - Full Sigma-spec coverage via [pySigma](https://github.com/SigmaHQ/pySigma)
   (nested fields, `base64`/`cidr` modifiers, correlation rules).
-- A GitHub Action for one-line CI gating.
 - Managed cloud (hosted runs, SSO, shared rule/test libraries) — the paid tier.
   The tool stays free forever.
 
