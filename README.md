@@ -1,5 +1,7 @@
 # detkit — dbt for detections
 
+[![CI](https://github.com/ELSATOAH/detkit/actions/workflows/ci.yml/badge.svg)](https://github.com/ELSATOAH/detkit/actions/workflows/ci.yml)
+
 Test, validate, and CI-gate your Sigma detection rules **as code**, before they
 ever reach production.
 
