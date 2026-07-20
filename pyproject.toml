@@ -1,6 +1,6 @@
 [project]
-name = "detkit"
-version = "0.1.0"
+name = "detkit-cli"
+version = "0.1.1"
 description = "dbt for detections — test, validate, and CI-gate Sigma detection rules as code."
 readme = "README.md"
 requires-python = ">=3.9"

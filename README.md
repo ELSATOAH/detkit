@@ -1,11 +1,11 @@
 # detkit — dbt for detections
 
-[![CI](https://github.com/ELSATOAH/detkit/actions/workflows/ci.yml/badge.svg)](https://github.com/ELSATOAH/detkit/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![CI](https://github.com/ELSATOAH/detkit/actions/workflows/ci.yml/badge.svg)](https://github.com/ELSATOAH/detkit/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/ELSATOAH/detkit/blob/main/LICENSE)
 
 Test, validate, and CI-gate your Sigma detection rules **as code**, before they
 ever reach production.
 
-![detkit catching a broken detection before it ships](detkit-demo.gif)
+![detkit catching a broken detection before it ships](https://raw.githubusercontent.com/ELSATOAH/detkit/main/detkit-demo.gif)
 
 Detection engineers write rules in [Sigma](https://sigmahq.io/), commit them to
 Git, and ship them to a SIEM — but there's no standard way to *unit-test* a rule
@@ -24,9 +24,7 @@ it. Your logs and rules never leave your machine or CI runner.
 ## Quickstart
 
 ```bash
-# detkit is a CLI — pipx installs it cleanly and sidesteps Debian/Ubuntu's PEP 668
-# (no pipx yet? `sudo apt install pipx`):
-pipx install git+https://github.com/ELSATOAH/detkit.git   # PyPI: `pipx install detkit` (coming soon)
+pipx install git+https://github.com/ELSATOAH/detkit.git   # PyPI: `pipx install detkit-cli` (coming soon)
 
 detkit init         # scaffold a starter rule + test + a CI workflow
 detkit test rules   # -> green on the first run
@@ -78,7 +76,7 @@ merge — the same safety net dbt gives analytics engineers.
   be shipped to someone else's cloud. That's the wedge closed SaaS SOC tools
   (Dropzone, Prophet, Intezer) structurally can't serve.
 - **The community distributes it:** good detection tooling spreads bottom-up on
-  GitHub (see Nuclei). detkit is built to be forked, extended, and shared.
+  GitHub. detkit is built to be forked, extended, and shared.
 
 ## Roadmap
 
