@@ -69,7 +69,10 @@ def cmd_test(args):
                 failed += 1
                 verb = "fired" if got else "did not fire"
                 print(f"  x {rule_path} :: {case.get('name', '?')}  (rule {verb}, expected {case['expect']})")
-    print(f"\n{passed} passed, {failed} failed, {untested} rule(s) without tests")
+    tested = len(rules) - untested
+    pct = round(100 * tested / len(rules)) if rules else 0
+    print(f"\n{passed} passed, {failed} failed")
+    print(f"{tested} of {len(rules)} rules have tests ({pct}% coverage)")
     return 1 if failed else 0
 
 
