@@ -7,4 +7,3 @@ dist/
 venv/
 .pytest_cache/
 .eggs/
-detkit-demo.tape
