@@ -92,14 +92,27 @@ def test_cidr_modifier():
 
 
 def test_scan_flags_unsupported():
-    det = {
-        "sel": {"CommandLine|base64offset|contains": "abc", "id.orig_h": "1.2.3.4"},
-        "condition": "sel",
-    }
+    det = {"sel": {"CommandLine|base64offset|contains": "abc"}, "condition": "sel"}
     findings = scan_unsupported(det)
     assert any("base64offset" in f for f in findings)
-    assert any("id.orig_h" in f for f in findings)
+    # nested/dotted fields are supported now, so they must NOT be flagged
+    assert scan_unsupported({"sel": {"id.orig_h": "1.2.3.4"}, "condition": "sel"}) == []
     assert scan_unsupported({"sel": {"EventID": 1}, "condition": "sel"}) == []
+
+
+def test_nested_field_access():
+    det = {"sel": {"DeviceDetail.deviceId": "abc123"}, "condition": "sel"}
+    assert event_matches_rule(det, {"DeviceDetail": {"deviceId": "abc123"}})   # nested dict
+    assert event_matches_rule(det, {"DeviceDetail.deviceId": "abc123"})        # flattened key
+    assert not event_matches_rule(det, {"DeviceDetail": {"deviceId": "other"}})
+    assert not event_matches_rule(det, {"DeviceDetail": {}})
+    assert not event_matches_rule(det, {"EventID": 1})
+
+
+def test_nested_field_with_modifier():
+    det = {"sel": {"gcp.audit.method_name|endswith": ".delete"}, "condition": "sel"}
+    assert event_matches_rule(det, {"gcp": {"audit": {"method_name": "v1.compute.firewalls.delete"}}})
+    assert not event_matches_rule(det, {"gcp": {"audit": {"method_name": "v1.compute.firewalls.list"}}})
 
 
 if __name__ == "__main__":

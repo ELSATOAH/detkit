@@ -1,6 +1,6 @@
 # detkit
 
-[![CI](https://github.com/ELSATOAH/detkit/actions/workflows/ci.yml/badge.svg)](https://github.com/ELSATOAH/detkit/actions/workflows/ci.yml) [![PyPI](https://img.shields.io/pypi/v/detkit-cli)](https://pypi.org/project/detkit-cli/) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/ELSATOAH/detkit/blob/main/LICENSE)
+[![CI](https://github.com/ELSATOAH/detkit/actions/workflows/ci.yml/badge.svg)](https://github.com/ELSATOAH/detkit/actions/workflows/ci.yml) [![PyPI](https://img.shields.io/pypi/v/detkit-cli)](https://pypi.org/project/detkit-cli/) [![Python](https://img.shields.io/pypi/pyversions/detkit-cli)](https://pypi.org/project/detkit-cli/) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/ELSATOAH/detkit/blob/main/LICENSE)
 
 Unit tests for your Sigma detection rules. Write a rule, add a couple of example log events, and detkit tells you whether it fires on the ones that should trip it and stays quiet on the ones that shouldn't. Wire it into CI and a broken detection fails the pull request instead of failing silently in production.
 

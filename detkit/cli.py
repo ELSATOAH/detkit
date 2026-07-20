@@ -5,7 +5,17 @@ import os
 import re
 import sys
 
+from . import __version__
 from .evaluator import event_matches_rule, scan_unsupported
+
+# Color only when writing to a terminal, and honor the NO_COLOR convention,
+# so piped and CI output stays plain.
+_COLOR = sys.stdout.isatty() and not os.environ.get("NO_COLOR")
+_GREEN, _RED, _YELLOW, _DIM = "32", "31", "33", "2"
+
+
+def _c(text, code):
+    return f"\033[{code}m{text}\033[0m" if _COLOR else text
 
 REQUIRED_KEYS = ("title", "logsource", "detection")
 
@@ -47,11 +57,11 @@ def cmd_test(args):
         detection = (rule or {}).get("detection")
         if isinstance(detection, dict):
             for warn in scan_unsupported(detection):
-                print(f"  ! {rule_path}  WARN: {warn} (result may be unreliable)")
+                print(f"  {_c('!', _YELLOW)} {rule_path}  WARN: {warn} (result may be unreliable)")
         test_path = _test_file_for(rule_path)
         if not test_path:
             untested += 1
-            print(f"  ? {rule_path}  (no .test.yml)")
+            print(f"  {_c('?', _DIM)} {rule_path}  (no .test.yml)")
             continue
         cases = (_load_yaml(test_path) or {}).get("tests", [])
         for case in cases:
@@ -60,18 +70,19 @@ def cmd_test(args):
                 got = event_matches_rule(detection, case.get("event", {}))
             except Exception as exc:  # a rule error should fail the test, not crash the run
                 failed += 1
-                print(f"  x {rule_path} :: {case.get('name', '?')}  ERROR: {exc}")
+                print(f"  {_c('x', _RED)} {rule_path} :: {case.get('name', '?')}  ERROR: {exc}")
                 continue
             if got == want:
                 passed += 1
-                print(f"  . {rule_path} :: {case.get('name', '?')}")
+                print(f"  {_c('.', _GREEN)} {rule_path} :: {case.get('name', '?')}")
             else:
                 failed += 1
                 verb = "fired" if got else "did not fire"
-                print(f"  x {rule_path} :: {case.get('name', '?')}  (rule {verb}, expected {case['expect']})")
+                print(f"  {_c('x', _RED)} {rule_path} :: {case.get('name', '?')}  (rule {verb}, expected {case['expect']})")
     tested = len(rules) - untested
     pct = round(100 * tested / len(rules)) if rules else 0
-    print(f"\n{passed} passed, {failed} failed")
+    failed_str = _c(f"{failed} failed", _RED) if failed else f"{failed} failed"
+    print(f"\n{_c(f'{passed} passed', _GREEN)}, {failed_str}")
     print(f"{tested} of {len(rules)} rules have tests ({pct}% coverage)")
     return 1 if failed else 0
 
@@ -113,7 +124,8 @@ def cmd_validate(args):
         warns = scan_unsupported(detection) if isinstance(detection, dict) else []
         total_errors += len(errors)
         total_warnings += len(warns)
-        print(f"  {'x' if errors else '!' if warns else '.'} {rule_path}")
+        marker = _c("x", _RED) if errors else _c("!", _YELLOW) if warns else _c(".", _GREEN)
+        print(f"  {marker} {rule_path}")
         for e in errors:
             print(f"      - error: {e}")
         for w in warns:
@@ -204,6 +216,7 @@ def cmd_generate(args):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="detkit", description="Test Sigma detection rules as code.")
+    parser.add_argument("--version", action="version", version=f"detkit {__version__}")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     p_test = sub.add_parser("test", help="run rule tests against sample events")

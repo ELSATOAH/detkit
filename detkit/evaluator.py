@@ -4,9 +4,10 @@ This is the core of detkit: unit-testing detection rules locally, the way
 dbt tests data models. It implements the common Sigma subset.
 
 # ponytail: common-subset evaluator (modifiers contains/startswith/endswith/re/cased/all/cidr,
-# value wildcards * and ?, list-OR, `N of them | N of prefix*`, and/or/not/parens). Ceilings:
-# no nested-field (dot) access, no |base64/|windash modifiers, no count()/timeframe aggregation,
-# matching is case-insensitive by default (real SIEM backends differ). Anything unsupported is
+# value wildcards * and ?, dotted field paths a.b.c into nested events, list-OR,
+# `N of them | N of prefix*`, and/or/not/parens). Ceilings: no |base64/|windash modifiers,
+# no count()/timeframe aggregation, no descent into arrays of objects, matching is
+# case-insensitive by default (real SIEM backends differ). Anything unsupported is
 # reported by scan_unsupported() so it fails loud instead of returning a wrong boolean. Upgrade
 # path: delegate to pySigma pipelines or a per-backend evaluator when a rule needs the full spec.
 """
@@ -48,13 +49,29 @@ def _matches_map(spec: dict, event: dict) -> bool:
 def _matches_field(key: str, expected, event: dict) -> bool:
     parts = key.split("|")
     field, mods = parts[0], [m.lower() for m in parts[1:]]
-    if field not in event:
+    found, ev = _resolve_field(field, event)
+    if not found:
         return False
-    ev = event[field]
     if isinstance(expected, list):
         results = [_match_scalar(ev, x, mods) for x in expected]
         return all(results) if "all" in mods else any(results)
     return _match_scalar(ev, expected, mods)
+
+
+def _resolve_field(field: str, event):
+    # Exact key first — covers flattened logs that use a literal dotted key
+    # (e.g. Elastic/ECS "gcp.audit.method_name"). Otherwise walk a.b.c into nested dicts.
+    if isinstance(event, dict) and field in event:
+        return True, event[field]
+    if "." in field and isinstance(event, dict):
+        cur = event
+        for part in field.split("."):
+            if isinstance(cur, dict) and part in cur:
+                cur = cur[part]
+            else:
+                return False, None
+        return True, cur
+    return False, None
 
 
 def _match_scalar(ev, expected, mods) -> bool:
@@ -123,9 +140,6 @@ def scan_unsupported(detection: dict) -> list:
             if mod not in _SUPPORTED_MODS and ("m", mod) not in seen:
                 seen.add(("m", mod))
                 findings.append(f"unsupported modifier '|{mod}' (on '{field}')")
-        if "." in field and ("f", field) not in seen:
-            seen.add(("f", field))
-            findings.append(f"nested/dotted field '{field}' (matched only as a flat key)")
 
     def walk(spec):
         if isinstance(spec, dict):
