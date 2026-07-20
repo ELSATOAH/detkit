@@ -1,6 +1,6 @@
 [project]
 name = "detkit-cli"
-version = "0.1.2"
+dynamic = ["version"]        
 description = "dbt for detections — test, validate, and CI-gate Sigma detection rules as code."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -29,8 +29,10 @@ Issues = "https://github.com/ELSATOAH/detkit/issues"
 detkit = "detkit.cli:main"
 
 [build-system]
-requires = ["setuptools>=61"]
+requires = ["setuptools>=61", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["detkit*"]
+
+[tool.setuptools_scm]
