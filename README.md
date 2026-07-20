@@ -68,6 +68,22 @@ jobs:
           path: rules
 ```
 
+## pre-commit
+
+Prefer to catch it before the commit lands? Add detkit to your [pre-commit](https://pre-commit.com) config:
+
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/ELSATOAH/detkit
+    rev: v0.1.3
+    hooks:
+      - id: detkit-test
+        args: [rules]   # path to your rules
+```
+
+There's a `detkit-validate` hook too, for the lighter structural check.
+
 ## What it handles
 
 detkit runs your rules locally. No SIEM, no credentials, nothing leaves your machine or CI runner. I ran it against every rule in the SigmaHQ repo, and about 91% use only features it understands today: `contains`, `startswith`, `endswith`, `re`, value wildcards (`*` and `?`), `|cidr`, keyword lists, and `X of` / `all of` conditions.

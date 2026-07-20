@@ -1,0 +1,26 @@
+# Lets other repos use detkit as a pre-commit hook. In a consuming repo's
+# .pre-commit-config.yaml:
+#
+#   repos:
+#     - repo: https://github.com/ELSATOAH/detkit
+#       rev: v0.1.3
+#       hooks:
+#         - id: detkit-test
+#           args: [rules]      # path to your rules
+- id: detkit-test
+  name: detkit test
+  description: Test Sigma detection rules against their sample events
+  entry: detkit test
+  language: python
+  types: [yaml]
+  args: [rules]
+  pass_filenames: false
+
+- id: detkit-validate
+  name: detkit validate
+  description: Structurally validate Sigma detection rules
+  entry: detkit validate
+  language: python
+  types: [yaml]
+  args: [rules]
+  pass_filenames: false
