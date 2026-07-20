@@ -24,9 +24,12 @@ it. Your logs and rules never leave your machine or CI runner.
 ## Quickstart
 
 ```bash
-pip install pyyaml                 # only runtime dependency (PyPI package coming soon)
-python -m detkit init              # scaffold a starter rule + test + a CI workflow
-python -m detkit test rules        # -> green on the first run
+# detkit is a CLI — pipx installs it cleanly and sidesteps Debian/Ubuntu's PEP 668
+# (no pipx yet? `sudo apt install pipx`):
+pipx install git+https://github.com/ELSATOAH/detkit.git   # PyPI: `pipx install detkit` (coming soon)
+
+detkit init         # scaffold a starter rule + test + a CI workflow
+detkit test rules   # -> green on the first run
 ```
 
 Each rule gets a sibling `*.test.yml` describing sample events and whether the
