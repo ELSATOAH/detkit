@@ -1,0 +1,23 @@
+# Unit tests for whoami_execution.yml — this is the detkit wedge:
+# every detection ships with sample events proving it fires (and doesn't).
+tests:
+  - name: fires on whoami run by a normal user
+    event:
+      EventID: 4688
+      CommandLine: "cmd /c whoami /all"
+      User: "alice"
+    expect: match
+
+  - name: suppressed for SYSTEM (the filter)
+    event:
+      EventID: 4688
+      CommandLine: "whoami"
+      User: "SYSTEM"
+    expect: no_match
+
+  - name: no match on an unrelated command
+    event:
+      EventID: 4688
+      CommandLine: "ipconfig /all"
+      User: "alice"
+    expect: no_match

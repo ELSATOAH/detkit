@@ -1,0 +1,15 @@
+title: Whoami Execution
+id: 6f0c3f2e-2a5e-4a1e-9b3a-0d5f1a2b3c4d
+status: experimental
+description: Detects execution of whoami.exe, common in post-exploitation recon.
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection:
+    EventID: 4688
+    CommandLine|contains: 'whoami'
+  filter:
+    User: 'SYSTEM'
+  condition: selection and not filter
+level: low

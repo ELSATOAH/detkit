@@ -1,0 +1,18 @@
+[project]
+name = "detkit"
+version = "0.1.0"
+description = "dbt for detections — test, validate, and CI-gate Sigma detection rules as code."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+dependencies = ["pyyaml>=6"]
+
+[project.scripts]
+detkit = "detkit.cli:main"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["detkit*"]
