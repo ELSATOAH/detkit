@@ -54,7 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: YOUR-ORG/detkit@v0     # this repo's composite action
+      - uses: detkit/detkit@v0     # this repo's composite action
         with:
           path: rules                # where your Sigma rules live
 ```
