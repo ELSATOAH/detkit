@@ -77,15 +77,25 @@ merge — the same safety net dbt gives analytics engineers.
 - `detkit generate` — AI-draft a rule **and its tests** from a natural-language
   threat description (tests are mandatory, never optional).
 - More log schemas / field-mapping so one rule tests against multiple log sources.
-- Full Sigma-spec coverage via [pySigma](https://github.com/SigmaHQ/pySigma)
-  (nested fields, `base64`/`cidr` modifiers, correlation rules).
+- Close the remaining gaps detkit currently warns on: nested/dotted field access
+  (~3% of rules) and `base64` modifiers — likely via
+  [pySigma](https://github.com/SigmaHQ/pySigma) for full-spec parsing.
 - Managed cloud (hosted runs, SSO, shared rule/test libraries) — the paid tier.
   The tool stays free forever.
 
 ## Status
 
-Early. The core — evaluating a Sigma rule's `detection`/`condition` against a log
-event, and a test runner around it — works today (`python tests/test_evaluator.py`).
-Known limits are marked with `# ponytail:` comments in `detkit/evaluator.py`.
+Early, but the core is real. detkit evaluates a rule's `detection`/`condition`
+against log events and runs tests around it — covering the features used by the
+**large majority of published SigmaHQ rules**: `contains`/`startswith`/`endswith`/
+`re` modifiers, value wildcards (`*`/`?`), `|cidr`, list-as-OR, keyword lists, and
+`X of` / `all of` conditions.
+
+What it can't yet evaluate (nested/dotted fields, `base64` modifiers) it **flags
+loudly** — `detkit validate` and `detkit test` print a `WARN` rather than return a
+confident wrong answer. A detection tool that's silently wrong is worse than none.
+
+Run the checks: `python tests/test_evaluator.py`. Limits are marked with
+`# ponytail:` comments in `detkit/evaluator.py`.
 
 MIT licensed. Contributions welcome.

@@ -5,7 +5,7 @@ import os
 import re
 import sys
 
-from .evaluator import event_matches_rule
+from .evaluator import event_matches_rule, scan_unsupported
 
 REQUIRED_KEYS = ("title", "logsource", "detection")
 
@@ -45,6 +45,9 @@ def cmd_test(args):
     for rule_path in rules:
         rule = _load_yaml(rule_path)
         detection = (rule or {}).get("detection")
+        if isinstance(detection, dict):
+            for warn in scan_unsupported(detection):
+                print(f"  ! {rule_path}  WARN: {warn} (result may be unreliable)")
         test_path = _test_file_for(rule_path)
         if not test_path:
             untested += 1
@@ -99,17 +102,20 @@ def cmd_validate(args):
     if not rules:
         print(f"no rules found under {args.path!r}")
         return 1
-    total_errors = 0
+    total_errors = total_warnings = 0
     for rule_path in rules:
-        errors = _validate_rule(_load_yaml(rule_path) or {})
-        if errors:
-            total_errors += len(errors)
-            print(f"  x {rule_path}")
-            for e in errors:
-                print(f"      - {e}")
-        else:
-            print(f"  . {rule_path}")
-    print(f"\n{total_errors} problem(s)")
+        rule = _load_yaml(rule_path) or {}
+        errors = _validate_rule(rule)
+        detection = rule.get("detection")
+        warns = scan_unsupported(detection) if isinstance(detection, dict) else []
+        total_errors += len(errors)
+        total_warnings += len(warns)
+        print(f"  {'x' if errors else '!' if warns else '.'} {rule_path}")
+        for e in errors:
+            print(f"      - error: {e}")
+        for w in warns:
+            print(f"      - warn:  {w}")
+    print(f"\n{total_errors} error(s), {total_warnings} warning(s)")
     return 1 if total_errors else 0
 
 

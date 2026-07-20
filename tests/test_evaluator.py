@@ -8,7 +8,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from detkit.evaluator import event_matches_rule  # noqa: E402
+from detkit.evaluator import event_matches_rule, scan_unsupported  # noqa: E402
 
 
 def test_equals_contains_and_not():
@@ -71,6 +71,35 @@ def test_regex_modifier():
     det = {"sel": {"CommandLine|re": r"whoami(\.exe)?\s"}, "condition": "sel"}
     assert event_matches_rule(det, {"CommandLine": "whoami.exe /all"})
     assert not event_matches_rule(det, {"CommandLine": "whoamidaemon"})
+
+
+def test_value_wildcard():
+    # regression for dogfood bug #1: `v*.compute.firewalls.delete` was matched literally
+    det = {"sel": {"MethodName": "v*.compute.firewalls.delete"}, "condition": "sel"}
+    assert event_matches_rule(det, {"MethodName": "v1.compute.firewalls.delete"})
+    assert not event_matches_rule(det, {"MethodName": "v1.compute.networks.delete"})
+    det_q = {"sel": {"Code": "AC?E"}, "condition": "sel"}
+    assert event_matches_rule(det_q, {"Code": "ACME"})
+    assert not event_matches_rule(det_q, {"Code": "ACabE"})
+
+
+def test_cidr_modifier():
+    # regression for dogfood bug #3: |cidr degraded to string equality, so filters never fired
+    det = {"filter": {"IpAddress|cidr": "10.0.0.0/8"}, "condition": "filter"}
+    assert event_matches_rule(det, {"IpAddress": "10.20.30.40"})
+    assert not event_matches_rule(det, {"IpAddress": "8.8.8.8"})
+    assert not event_matches_rule(det, {"IpAddress": "not-an-ip"})
+
+
+def test_scan_flags_unsupported():
+    det = {
+        "sel": {"CommandLine|base64offset|contains": "abc", "id.orig_h": "1.2.3.4"},
+        "condition": "sel",
+    }
+    findings = scan_unsupported(det)
+    assert any("base64offset" in f for f in findings)
+    assert any("id.orig_h" in f for f in findings)
+    assert scan_unsupported({"sel": {"EventID": 1}, "condition": "sel"}) == []
 
 
 if __name__ == "__main__":

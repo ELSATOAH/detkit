@@ -3,15 +3,19 @@
 This is the core of detkit: unit-testing detection rules locally, the way
 dbt tests data models. It implements the common Sigma subset.
 
-# ponytail: common-subset evaluator (modifiers contains/startswith/endswith/re/cased/all,
-# list-OR, `N of them | N of prefix*`, and/or/not/parens). Ceilings: no nested-field (dot)
-# access, no |base64/|cidr modifiers, no count()/timeframe aggregation, matching is
-# case-insensitive by default (real SIEM backends differ). Upgrade path: delegate to
-# pySigma pipelines or a per-backend evaluator when a rule needs the full spec.
+# ponytail: common-subset evaluator (modifiers contains/startswith/endswith/re/cased/all/cidr,
+# value wildcards * and ?, list-OR, `N of them | N of prefix*`, and/or/not/parens). Ceilings:
+# no nested-field (dot) access, no |base64/|windash modifiers, no count()/timeframe aggregation,
+# matching is case-insensitive by default (real SIEM backends differ). Anything unsupported is
+# reported by scan_unsupported() so it fails loud instead of returning a wrong boolean. Upgrade
+# path: delegate to pySigma pipelines or a per-backend evaluator when a rule needs the full spec.
 """
+import ipaddress
 import re
 
-__all__ = ["event_matches_rule"]
+__all__ = ["event_matches_rule", "scan_unsupported"]
+
+_SUPPORTED_MODS = {"contains", "startswith", "endswith", "re", "cased", "all", "cidr"}
 
 
 def event_matches_rule(detection: dict, event: dict) -> bool:
@@ -55,6 +59,8 @@ def _matches_field(key: str, expected, event: dict) -> bool:
 
 def _match_scalar(ev, expected, mods) -> bool:
     cased = "cased" in mods
+    if "cidr" in mods:
+        return _cidr_match(ev, expected)
     if "re" in mods:
         return re.search(str(expected), str(ev), 0 if cased else re.IGNORECASE) is not None
     if expected is None:
@@ -76,7 +82,63 @@ def _match_scalar(ev, expected, mods) -> bool:
         return a.startswith(b)
     if "endswith" in mods:
         return a.endswith(b)
+    if _has_glob(b):  # Sigma value wildcards: * = any run, ? = one char
+        return re.fullmatch(_glob_to_regex(b), a) is not None
     return a == b
+
+
+def _has_glob(value: str) -> bool:
+    return re.search(r"(?<!\\)[*?]", value) is not None
+
+
+def _glob_to_regex(pattern: str) -> str:
+    out, i = [], 0
+    while i < len(pattern):
+        c = pattern[i]
+        if c == "\\" and i + 1 < len(pattern) and pattern[i + 1] in "*?\\":
+            out.append(re.escape(pattern[i + 1]))
+            i += 2
+            continue
+        out.append(".*" if c == "*" else "." if c == "?" else re.escape(c))
+        i += 1
+    return "".join(out)
+
+
+def _cidr_match(ev, expected) -> bool:
+    try:
+        return ipaddress.ip_address(str(ev)) in ipaddress.ip_network(str(expected), strict=False)
+    except ValueError:
+        return False
+
+
+def scan_unsupported(detection: dict) -> list:
+    """Report Sigma features this evaluator cannot handle, so a rule fails loud
+    instead of silently returning a wrong result. Returns human-readable strings."""
+    findings, seen = [], set()
+
+    def check_key(key):
+        parts = key.split("|")
+        field = parts[0]
+        for mod in (m.lower() for m in parts[1:]):
+            if mod not in _SUPPORTED_MODS and ("m", mod) not in seen:
+                seen.add(("m", mod))
+                findings.append(f"unsupported modifier '|{mod}' (on '{field}')")
+        if "." in field and ("f", field) not in seen:
+            seen.add(("f", field))
+            findings.append(f"nested/dotted field '{field}' (matched only as a flat key)")
+
+    def walk(spec):
+        if isinstance(spec, dict):
+            for key in spec:
+                check_key(key)
+        elif isinstance(spec, list):
+            for item in spec:
+                walk(item)
+
+    for name, spec in detection.items():
+        if name != "condition":
+            walk(spec)
+    return findings
 
 
 def _keyword_match(keyword, event: dict) -> bool:
