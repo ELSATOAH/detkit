@@ -21,9 +21,9 @@ classifiers = [
 dependencies = ["pyyaml>=6"]
 
 [project.urls]
-Homepage = "https://github.com/detkit/detkit"
-Repository = "https://github.com/detkit/detkit"
-Issues = "https://github.com/detkit/detkit/issues"
+Homepage = "https://github.com/ELSATOAH/detkit"
+Repository = "https://github.com/ELSATOAH/detkit"
+Issues = "https://github.com/ELSATOAH/detkit/issues"
 
 [project.scripts]
 detkit = "detkit.cli:main"
