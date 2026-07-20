@@ -24,8 +24,9 @@ it. Your logs and rules never leave your machine or CI runner.
 ## Quickstart
 
 ```bash
-pip install pyyaml            # only runtime dependency
-python -m detkit test examples/rules
+pip install pyyaml                 # only runtime dependency (PyPI package coming soon)
+python -m detkit init              # scaffold a starter rule + test + a CI workflow
+python -m detkit test rules        # -> green on the first run
 ```
 
 Each rule gets a sibling `*.test.yml` describing sample events and whether the

@@ -119,6 +119,75 @@ def cmd_validate(args):
     return 1 if total_errors else 0
 
 
+_INIT_RULE = """\
+title: Whoami Execution
+id: 3a2b1c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d
+status: experimental
+description: Example rule from `detkit init` — detects whoami, a common recon command. Replace with your own.
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection:
+    CommandLine|contains: 'whoami'
+  condition: selection
+level: low
+"""
+
+_INIT_TEST = """\
+# Sample events proving the rule fires (and stays quiet). This is the point of detkit.
+tests:
+  - name: fires on whoami
+    event: { CommandLine: "cmd /c whoami /all" }
+    expect: match
+  - name: ignores an unrelated command
+    event: { CommandLine: "ipconfig /all" }
+    expect: no_match
+"""
+
+_INIT_WORKFLOW = """\
+name: Detections
+on: [pull_request, push]
+
+jobs:
+  detkit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - run: pip install detkit
+      - run: detkit test rules
+"""
+
+
+def cmd_init(args):
+    files = {
+        os.path.join("rules", "example_rule.yml"): _INIT_RULE,
+        os.path.join("rules", "example_rule.test.yml"): _INIT_TEST,
+        os.path.join(".github", "workflows", "detections.yml"): _INIT_WORKFLOW,
+    }
+    created = skipped = 0
+    for rel, content in files.items():
+        dest = os.path.join(args.path, rel)
+        if os.path.exists(dest):
+            skipped += 1
+            print(f"  skipped (exists): {dest}")
+            continue
+        parent = os.path.dirname(dest)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+        with open(dest, "w") as f:
+            f.write(content)
+        created += 1
+        print(f"  created: {dest}")
+    print(f"\n{created} file(s) created, {skipped} skipped.")
+    if created:
+        print("Next: run `detkit test rules` — you should see it pass.")
+    return 0
+
+
 def cmd_generate(args):
     print(
         "`detkit generate` is not implemented yet.\n"
@@ -141,6 +210,10 @@ def main(argv=None):
     p_val = sub.add_parser("validate", help="structurally validate rules")
     p_val.add_argument("path", nargs="?", default=".")
     p_val.set_defaults(func=cmd_validate)
+
+    p_init = sub.add_parser("init", help="scaffold a starter rule + test + CI workflow")
+    p_init.add_argument("path", nargs="?", default=".")
+    p_init.set_defaults(func=cmd_init)
 
     p_gen = sub.add_parser("generate", help="(planned) AI-draft a rule + tests")
     p_gen.set_defaults(func=cmd_generate)
