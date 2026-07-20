@@ -1,4 +1,4 @@
-# Unit tests for whoami_execution.yml — this is the detkit wedge:
+# Unit tests for whoami_execution.yml
 # every detection ships with sample events proving it fires (and doesn't).
 tests:
   - name: fires on whoami run by a normal user

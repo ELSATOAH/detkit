@@ -3,6 +3,8 @@
 Test, validate, and CI-gate your Sigma detection rules **as code**, before they
 ever reach production.
 
+![detkit catching a broken detection before it ships](detkit-demo.gif)
+
 Detection engineers write rules in [Sigma](https://sigmahq.io/), commit them to
 Git, and ship them to a SIEM — but there's no standard way to *unit-test* a rule
 locally: does it actually fire on the attack it targets, and stay quiet on benign
