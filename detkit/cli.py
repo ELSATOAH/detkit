@@ -48,43 +48,71 @@ def _test_file_for(rule_path):
 
 
 def cmd_test(args):
+    as_json = bool(getattr(args, "as_json", False))
     rules = _discover_rules(args.path)
     if not rules:
-        print(f"no rules found under {args.path!r}")
+        if as_json:
+            print(json.dumps({"rules": [], "passed": 0, "failed": 0, "untested": 0, "coverage_pct": 0, "results": []}))
+        else:
+            print(f"no rules found under {args.path!r}")
         return 1
     passed = failed = untested = 0
+    results = []
     for rule_path in rules:
         rule = _load_yaml(rule_path)
         detection = (rule or {}).get("detection")
         if isinstance(detection, dict):
             for warn in scan_unsupported(detection):
-                print(f"  {_c('!', _YELLOW)} {rule_path}  WARN: {warn} (result may be unreliable)")
+                if not as_json:
+                    print(f"  {_c('!', _YELLOW)} {rule_path}  WARN: {warn} (result may be unreliable)")
+                results.append({"path": rule_path, "name": None, "status": "warn", "detail": warn})
         test_path = _test_file_for(rule_path)
         if not test_path:
             untested += 1
-            print(f"  {_c('?', _DIM)} {rule_path}  (no .test.yml)")
+            if not as_json:
+                print(f"  {_c('?', _DIM)} {rule_path}  (no .test.yml)")
+            results.append({"path": rule_path, "name": None, "status": "untested", "detail": "no .test.yml"})
             continue
         cases = (_load_yaml(test_path) or {}).get("tests", [])
         for case in cases:
+            name = case.get("name", "?")
             want = case.get("expect", "match") == "match"
             try:
                 got = event_matches_rule(detection, case.get("event", {}))
             except Exception as exc:  # a rule error should fail the test, not crash the run
                 failed += 1
-                print(f"  {_c('x', _RED)} {rule_path} :: {case.get('name', '?')}  ERROR: {exc}")
+                if not as_json:
+                    print(f"  {_c('x', _RED)} {rule_path} :: {name}  ERROR: {exc}")
+                results.append({"path": rule_path, "name": name, "status": "error", "detail": str(exc)})
                 continue
             if got == want:
                 passed += 1
-                print(f"  {_c('.', _GREEN)} {rule_path} :: {case.get('name', '?')}")
+                if not as_json:
+                    print(f"  {_c('.', _GREEN)} {rule_path} :: {name}")
+                results.append({"path": rule_path, "name": name, "status": "pass", "detail": None})
             else:
                 failed += 1
                 verb = "fired" if got else "did not fire"
-                print(f"  {_c('x', _RED)} {rule_path} :: {case.get('name', '?')}  (rule {verb}, expected {case['expect']})")
+                detail = f"rule {verb}, expected {case.get('expect')}"
+                if not as_json:
+                    print(f"  {_c('x', _RED)} {rule_path} :: {name}  ({detail})")
+                results.append({"path": rule_path, "name": name, "status": "fail", "detail": detail})
     tested = len(rules) - untested
     pct = round(100 * tested / len(rules)) if rules else 0
-    failed_str = _c(f"{failed} failed", _RED) if failed else f"{failed} failed"
-    print(f"\n{_c(f'{passed} passed', _GREEN)}, {failed_str}")
-    print(f"{tested} of {len(rules)} rules have tests ({pct}% coverage)")
+    if as_json:
+        print(json.dumps({
+            "passed": passed,
+            "failed": failed,
+            "untested": untested,
+            "rules": len(rules),
+            "tested": tested,
+            "coverage_pct": pct,
+            "results": results,
+        }))
+    else:
+        failed_str = _c(f"{failed} failed", _RED) if failed else f"{failed} failed"
+        print(f"\n{_c(f'{passed} passed', _GREEN)}, {failed_str}")
+        print(f"{tested} of {len(rules)} rules have tests ({pct}% coverage)")
     return 1 if failed else 0
 
 
@@ -262,6 +290,8 @@ def main(argv=None):
 
     p_test = sub.add_parser("test", help="run rule tests against sample events")
     p_test.add_argument("path", nargs="?", default=".")
+    p_test.add_argument("--json", dest="as_json", action="store_true",
+                        help="emit machine-readable JSON results")
     p_test.set_defaults(func=cmd_test)
 
     p_val = sub.add_parser("validate", help="structurally validate rules")

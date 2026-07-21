@@ -14,8 +14,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - run: pip install -e .
-      - name: Unit checks (evaluator core)
-        run: python tests/test_evaluator.py
+      - run: pip install -e . pytest
+      - name: Run the test suite
+        run: pytest -q
       - name: Example rules must pass their tests
         run: detkit test examples/rules
