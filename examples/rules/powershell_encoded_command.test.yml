@@ -1,0 +1,22 @@
+# Unit tests for powershell_encoded_command.yml
+tests:
+  - name: fires on -EncodedCommand
+    event:
+      EventID: 4688
+      CommandLine: "powershell.exe -EncodedCommand SQBFAFgA"
+      User: "alice"
+    expect: match
+
+  - name: fires on short -enc form
+    event:
+      EventID: 4688
+      CommandLine: "powershell.exe -enc SQBFAFgA"
+      User: "bob"
+    expect: match
+
+  - name: no match on normal powershell
+    event:
+      EventID: 4688
+      CommandLine: "powershell.exe -File setup.ps1"
+      User: "alice"
+    expect: no_match

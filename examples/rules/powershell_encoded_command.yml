@@ -1,0 +1,23 @@
+title: PowerShell Encoded Command
+id: 7e2f6a91-3c4d-4b8e-9a1f-2d5c8e0b4f63
+status: experimental
+description: >
+  Detects PowerShell launched with -EncodedCommand / -enc,
+  a common post-exploitation technique to hide payloads.
+logsource:
+  category: process_creation
+  product: windows
+tags:
+  - attack.execution
+  - attack.t1059.001
+  - attack.defense_evasion
+  - attack.t1027
+detection:
+  selection:
+    EventID: 4688
+    CommandLine|contains:
+      - '-EncodedCommand'
+      - ' -enc '
+      - ' -Enc '
+  condition: selection
+level: medium
