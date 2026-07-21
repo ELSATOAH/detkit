@@ -5,6 +5,9 @@ description: Detects execution of whoami.exe, common in post-exploitation recon.
 logsource:
   category: process_creation
   product: windows
+tags:
+  - attack.discovery
+  - attack.t1033
 detection:
   selection:
     EventID: 4688

@@ -5,7 +5,7 @@ import os
 import re
 import sys
 
-from . import __version__
+from . import __version__, docs
 from .evaluator import event_matches_rule, scan_unsupported
 
 # Color only when writing to a terminal, and honor the NO_COLOR convention,
@@ -203,6 +203,26 @@ def cmd_init(args):
     return 0
 
 
+def cmd_docs(args):
+    rules = _discover_rules(args.path)
+    if not rules:
+        print(f"no rules found under {args.path!r}")
+        return 1
+    items = [
+        {"path": rp, "rule": _load_yaml(rp) or {}, "has_tests": _test_file_for(rp) is not None}
+        for rp in rules
+    ]
+    html_str, summary = docs.render(items)
+    with open(args.output, "w", encoding="utf-8") as f:
+        f.write(html_str)
+    print(
+        f"{summary['total']} rules, {summary['tested']} tested ({summary['coverage']}% coverage), "
+        f"{summary['techniques']} ATT&CK techniques across {summary['tactics']}/14 tactics"
+    )
+    print(f"wrote {args.output}")
+    return 0
+
+
 def cmd_generate(args):
     print(
         "`detkit generate` is not implemented yet.\n"
@@ -230,6 +250,11 @@ def main(argv=None):
     p_init = sub.add_parser("init", help="scaffold a starter rule + test + CI workflow")
     p_init.add_argument("path", nargs="?", default=".")
     p_init.set_defaults(func=cmd_init)
+
+    p_docs = sub.add_parser("docs", help="generate an HTML catalog + ATT&CK coverage map")
+    p_docs.add_argument("path", nargs="?", default=".")
+    p_docs.add_argument("-o", "--output", default="detkit-docs.html")
+    p_docs.set_defaults(func=cmd_docs)
 
     p_gen = sub.add_parser("generate", help="(planned) AI-draft a rule + tests")
     p_gen.set_defaults(func=cmd_generate)
