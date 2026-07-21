@@ -1,6 +1,7 @@
 """detkit command line: test / validate / generate."""
 import argparse
 import glob
+import json
 import os
 import re
 import sys
@@ -203,6 +204,18 @@ def cmd_init(args):
     return 0
 
 
+def _load_attack_data():
+    """Load the bundled ATT&CK matrix if present; None falls back to covered-only view."""
+    try:
+        from importlib.resources import files
+        p = files("detkit").joinpath("attack_enterprise.json")
+        if p.is_file():
+            return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    return None
+
+
 def cmd_docs(args):
     rules = _discover_rules(args.path)
     if not rules:
@@ -212,13 +225,21 @@ def cmd_docs(args):
         {"path": rp, "rule": _load_yaml(rp) or {}, "has_tests": _test_file_for(rp) is not None}
         for rp in rules
     ]
-    html_str, summary = docs.render(items)
+    html_str, summary = docs.render(items, _load_attack_data())
     with open(args.output, "w", encoding="utf-8") as f:
         f.write(html_str)
-    print(
-        f"{summary['total']} rules, {summary['tested']} tested ({summary['coverage']}% coverage), "
-        f"{summary['techniques']} ATT&CK techniques across {summary['tactics']}/14 tactics"
-    )
+    if "matrix_total" in summary:
+        line = (
+            f"{summary['total']} rules, {summary['tested']} tested ({summary['coverage']}%), "
+            f"ATT&CK coverage {summary['matrix_covered']}/{summary['matrix_total']} techniques "
+            f"across {summary['tactics']}/14 tactics"
+        )
+    else:
+        line = (
+            f"{summary['total']} rules, {summary['tested']} tested ({summary['coverage']}% coverage), "
+            f"{summary['techniques']} ATT&CK techniques across {summary['tactics']}/14 tactics"
+        )
+    print(line)
     print(f"wrote {args.output}")
     return 0
 

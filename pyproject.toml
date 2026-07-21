@@ -34,4 +34,7 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 include = ["detkit*"]
 
+[tool.setuptools.package-data]
+detkit = ["*.json"]
+
 [tool.setuptools_scm]
