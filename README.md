@@ -84,11 +84,28 @@ repos:
 
 There's a `detkit-validate` hook too, for the lighter structural check.
 
+## Coverage
+
+Past a handful of rules you want to see what you're *not* covering. `detkit docs` builds a single self-contained HTML page: a catalog of every rule plus a MITRE ATT&CK heatmap of which techniques you detect, which you test, and which are gaps.
+
+```bash
+detkit docs rules -o coverage.html
+```
+
+Green is a technique with a tested rule, amber is a rule with no test, and the faint cells are the gaps. It's one file with no external assets, so you can commit it or publish it to GitHub Pages.
+
+`detkit navigator` exports the same coverage as a [MITRE ATT&CK Navigator](https://mitre-attack.github.io/attack-navigator/) layer, so it drops straight into the tool your team already uses:
+
+```bash
+detkit navigator rules -o coverage.json
+# then Open Existing Layer -> Upload at the Navigator
+```
+
 ## What it handles
 
-detkit runs your rules locally. No SIEM, no credentials, nothing leaves your machine or CI runner. I ran it against every rule in the SigmaHQ repo, and about 91% use only features it understands today: `contains`, `startswith`, `endswith`, `re`, value wildcards (`*` and `?`), `|cidr`, keyword lists, and `X of` / `all of` conditions.
+detkit runs your rules locally. No SIEM, no credentials, nothing leaves your machine or CI runner. I ran it against every rule in the SigmaHQ repo, and about 91% use only features it understands today: `contains`, `startswith`, `endswith`, `re`, value wildcards (`*` and `?`), `|cidr`, nested/dotted fields (`DeviceDetail.deviceId`), keyword lists, and `X of` / `all of` conditions.
 
-It won't guess at the rest. If a rule uses something detkit can't evaluate yet, like nested fields (`DeviceDetail.deviceId`) or `base64` modifiers, `test` and `validate` print a WARN naming the feature instead of returning an answer that might be wrong. A detection tool that's quietly wrong is worse than no tool.
+It won't guess at the rest. If a rule uses something detkit can't evaluate yet, like `base64`/`windash` modifiers or arrays of objects, `test` and `validate` print a WARN naming the feature instead of returning an answer that might be wrong. A detection tool that's quietly wrong is worse than no tool.
 
 ## Why
 
@@ -96,7 +113,7 @@ Detections live in Git now, but the testing habit that comes with the rest of so
 
 ## Roadmap
 
-- Nested/dotted fields and `base64` modifiers (the two things it warns on today), probably via [pySigma](https://github.com/SigmaHQ/pySigma).
+- `base64`/`windash` modifiers and arrays of objects (what it warns on today), probably via [pySigma](https://github.com/SigmaHQ/pySigma).
 - `detkit generate`: draft a rule and its tests from a plain-English description. The tests come with it, not as an afterthought.
 - Field mapping, so one rule can be checked against more than one log schema.
 - A hosted option down the line for teams that want shared runs and history. The CLI stays free.

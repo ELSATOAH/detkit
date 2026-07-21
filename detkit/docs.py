@@ -124,6 +124,54 @@ def render(items, attack_data=None):
     return _page(rules, covered, other, full, names, matrix_on, summary), summary
 
 
+def _covered_by_technique(items):
+    """{parent technique id: tested?} across all rules — folds sub-techniques to parent."""
+    out = {}
+    for it in items:
+        r = _extract(it)
+        for tech in r["techniques"]:
+            parent = tech.split(".")[0]
+            out[parent] = out.get(parent, False) or r["has_tests"]
+    return out
+
+
+def navigator_layer(items, attack_data=None, name="detkit coverage"):
+    """Build a MITRE ATT&CK Navigator layer (dict) from rule coverage.
+
+    score 100 = has detkit tests (green), 50 = covered but untested (amber);
+    gaps are left out so Navigator shows them uncolored. Import at
+    https://mitre-attack.github.io/attack-navigator/.
+    """
+    covered = _covered_by_technique(items)
+    full, _ = _matrix(attack_data)
+    universe = {t for techs in full.values() for t in techs}
+    version = str((attack_data or {}).get("attack_version", "")).lstrip("vV") or "17"
+    techniques = [
+        {
+            "techniqueID": tech,
+            "score": 100 if tested else 50,
+            "enabled": True,
+            "comment": "tested" if tested else "covered (no detkit test)",
+        }
+        for tech, tested in sorted(covered.items())
+        if not universe or tech in universe
+    ]
+    return {
+        "name": name,
+        "domain": "enterprise-attack",
+        "description": "detkit detection coverage. score 100 = has detkit tests, 50 = covered but untested.",
+        "versions": {"attack": version, "navigator": "5.1.0", "layer": "4.5"},
+        "sorting": 0,
+        "hideDisabled": False,
+        "techniques": techniques,
+        "gradient": {"colors": ["#fff8c5", "#8ec843"], "minValue": 50, "maxValue": 100},
+        "legendItems": [
+            {"label": "covered, no test", "color": "#fff8c5"},
+            {"label": "tested", "color": "#8ec843"},
+        ],
+    }
+
+
 def _cells(cov, official, names):
     """cov: {tech: tested?}. official: {tech: name} (full matrix) or None."""
     if official is None:                       # v1: only covered techniques

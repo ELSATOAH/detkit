@@ -272,6 +272,23 @@ def cmd_docs(args):
     return 0
 
 
+def cmd_navigator(args):
+    rules = _discover_rules(args.path)
+    if not rules:
+        print(f"no rules found under {args.path!r}")
+        return 1
+    items = [
+        {"path": rp, "rule": _load_yaml(rp) or {}, "has_tests": _test_file_for(rp) is not None}
+        for rp in rules
+    ]
+    layer = docs.navigator_layer(items, _load_attack_data())
+    with open(args.output, "w", encoding="utf-8") as f:
+        json.dump(layer, f, indent=2)
+    print(f"exported {len(layer['techniques'])} techniques -> {args.output}")
+    print("import it at https://mitre-attack.github.io/attack-navigator/ (Open Existing Layer -> Upload)")
+    return 0
+
+
 def cmd_generate(args):
     print(
         "`detkit generate` is not implemented yet.\n"
@@ -306,6 +323,11 @@ def main(argv=None):
     p_docs.add_argument("path", nargs="?", default=".")
     p_docs.add_argument("-o", "--output", default="detkit-docs.html")
     p_docs.set_defaults(func=cmd_docs)
+
+    p_nav = sub.add_parser("navigator", help="export coverage as a MITRE ATT&CK Navigator layer (JSON)")
+    p_nav.add_argument("path", nargs="?", default=".")
+    p_nav.add_argument("-o", "--output", default="detkit-navigator.json")
+    p_nav.set_defaults(func=cmd_navigator)
 
     p_gen = sub.add_parser("generate", help="(planned) AI-draft a rule + tests")
     p_gen.set_defaults(func=cmd_generate)

@@ -4,7 +4,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from detkit.docs import parse_attack, render  # noqa: E402
+from detkit.docs import navigator_layer, parse_attack, render  # noqa: E402
 
 
 def test_parse_attack():
@@ -37,6 +37,25 @@ def test_render_empty():
     html_str, summary = render([])
     assert summary == {"total": 0, "tested": 0, "coverage": 0, "techniques": 0, "tactics": 0}
     assert "<!doctype html>" in html_str.lower()
+
+
+def test_navigator_layer():
+    items = [
+        {"path": "a.yml", "has_tests": True,
+         "rule": {"title": "A", "tags": ["attack.execution", "attack.t1059.001"]}},
+        {"path": "b.yml", "has_tests": False,
+         "rule": {"title": "B", "tags": ["attack.persistence", "attack.t1547"]}},
+    ]
+    attack = {"attack_version": "v19", "techniques": [
+        {"id": "T1059", "name": "x", "tactics": ["execution"]},
+        {"id": "T1547", "name": "y", "tactics": ["persistence"]},
+    ]}
+    layer = navigator_layer(items, attack)
+    assert layer["domain"] == "enterprise-attack"
+    assert layer["versions"]["attack"] == "19"        # 'v19' -> '19'
+    by = {t["techniqueID"]: t for t in layer["techniques"]}
+    assert by["T1059"]["score"] == 100                # sub-technique folds to parent, tested
+    assert by["T1547"]["score"] == 50                 # covered, no test
 
 
 if __name__ == "__main__":

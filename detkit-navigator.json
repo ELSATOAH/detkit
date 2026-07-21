@@ -1,0 +1,50 @@
+{
+  "name": "detkit coverage",
+  "domain": "enterprise-attack",
+  "description": "detkit detection coverage. score 100 = has detkit tests, 50 = covered but untested.",
+  "versions": {
+    "attack": "19",
+    "navigator": "5.1.0",
+    "layer": "4.5"
+  },
+  "sorting": 0,
+  "hideDisabled": false,
+  "techniques": [
+    {
+      "techniqueID": "T1027",
+      "score": 100,
+      "enabled": true,
+      "comment": "tested"
+    },
+    {
+      "techniqueID": "T1033",
+      "score": 100,
+      "enabled": true,
+      "comment": "tested"
+    },
+    {
+      "techniqueID": "T1059",
+      "score": 100,
+      "enabled": true,
+      "comment": "tested"
+    }
+  ],
+  "gradient": {
+    "colors": [
+      "#fff8c5",
+      "#8ec843"
+    ],
+    "minValue": 50,
+    "maxValue": 100
+  },
+  "legendItems": [
+    {
+      "label": "covered, no test",
+      "color": "#fff8c5"
+    },
+    {
+      "label": "tested",
+      "color": "#8ec843"
+    }
+  ]
+}
